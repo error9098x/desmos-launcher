@@ -252,14 +252,15 @@
 
   <script>
     (function() {
-      const params = new URLSearchParams(window.location.search);
-      const equations = [];
-      
-      for (const [key, value] of params.entries()) {
-        if (key === 'eq' || key.match(/^eq\d+$/)) {
-          equations.push(value);
-        }
-      }
+const rawSearch = window.location.search.replace(/\+/g, '%2B');
+const params = new URLSearchParams(rawSearch);
+const equations = [];
+
+for (const [key, value] of params.entries()) {
+  if (key === 'eq' || key.match(/^eq\d+$/)) {
+    equations.push(value);
+  }
+}
       
       const allEquations = equations;
       
@@ -276,10 +277,8 @@
         return;
       }
       
-      const displayText = allEquations.join(', ');
-      equationDisplay.textContent = displayText;
-      
-const desmosUrl = 'https://www.desmos.com/calculator';
+const displayText = allEquations.join(', ');
+equationDisplay.textContent = displayText;
 
 function tryRenderLatex(element, text) {
   if (typeof katex !== 'undefined') {
@@ -306,8 +305,8 @@ function tryRenderLatex(element, text) {
     }
   }
 }
-      
-      tryRenderLatex(equationDisplay, displayText);
+
+tryRenderLatex(equationDisplay, displayText);
 
 const desmosUrl = 'https://www.desmos.com/calculator';
 openDesmosLink.href = desmosUrl;
@@ -319,13 +318,13 @@ openDesmosLink.href = desmosUrl;
         }
         
         try {
-          const calculator = Desmos.GraphingCalculator(calculatorEl, {
-            expressions: false,
-            settingsMenu: false,
-            zoomButtons: true,
-            lockViewport: false,
-            border: false
-          });
+const calculator = Desmos.GraphingCalculator(calculatorEl, {
+  expressions: true,
+  settingsMenu: false,
+  zoomButtons: true,
+  lockViewport: false,
+  border: false
+});
           
           allEquations.forEach((eq, index) => {
             const expression = eq.includes('=') ? eq : 'y = ' + eq;
