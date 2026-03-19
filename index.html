@@ -257,11 +257,11 @@
       
       for (const [key, value] of params.entries()) {
         if (key === 'eq' || key.match(/^eq\d+$/)) {
-          equations.push(decodeURIComponent(value));
+          equations.push(value);
         }
       }
       
-      const allEquations = equations.length > 0 ? equations : [];
+      const allEquations = equations;
       
       const loadingEl = document.getElementById('loading');
       const errorEl = document.getElementById('error');
@@ -279,32 +279,38 @@
       const displayText = allEquations.join(', ');
       equationDisplay.textContent = displayText;
       
-      const desmosUrl = 'https://www.desmos.com/calculator?' + allEquations.map(eq => 'y=' + encodeURIComponent(eq)).join('&');
-      openDesmosLink.href = desmosUrl;
-      
-      function tryRenderLatex(element, text) {
-        if (typeof katex !== 'undefined') {
-          try {
-            const latexText = text
-              .replace(/\^/g, '^{')
-              .replace(/(\d)\{/g, '$1^{')
-              .replace(/\{/g, '{')
-              .replace(/sqrt\(/g, '\\sqrt{')
-              .replace(/\)/g, '}')
-              .replace(/(\d)([a-zA-Z])/g, '$1 \\cdot $2');
-            
-            katex.render(text, element, {
-              throwOnError: false,
-              displayMode: false
-            });
-            element.classList.add('katex-rendered');
-          } catch (e) {
-            element.textContent = text;
-          }
-        }
-      }
+const desmosUrl = 'https://www.desmos.com/calculator';
+
+function tryRenderLatex(element, text) {
+  if (typeof katex !== 'undefined') {
+    try {
+      const converted = text
+        .replace(/\^/g, '^{')
+        .replace(/\+(\d+)/g, ' + $1')
+        .replace(/\-(\d)/g, ' - $1')
+        .replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}')
+        .replace(/sin\(/g, '\\sin(')
+        .replace(/cos\(/g, '\\cos(')
+        .replace(/tan\(/g, '\\tan(')
+        .replace(/log\(/g, '\\log(')
+        .replace(/ln\(/g, '\\ln(')
+        .replace(/pi/g, '\\pi');
+
+      katex.render(converted, element, {
+        throwOnError: false,
+        displayMode: false
+      });
+      element.classList.add('katex-rendered');
+    } catch (e) {
+      element.textContent = text;
+    }
+  }
+}
       
       tryRenderLatex(equationDisplay, displayText);
+
+const desmosUrl = 'https://www.desmos.com/calculator';
+openDesmosLink.href = desmosUrl;
       
       function initCalculator() {
         if (typeof Desmos === 'undefined') {
