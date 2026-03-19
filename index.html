@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Desmos Equation Launcher</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    :root {
+      --bg-color: #1a1a2e;
+      --text-color: #eaeaea;
+      --muted-color: #8892b0;
+      --accent-color: #64ffda;
+      --error-bg: #2d2d44;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .header {
+      padding: 12px 20px;
+      background: rgba(26, 26, 46, 0.95);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      z-index: 100;
+    }
+    
+    .equation-display {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .equation-label {
+      color: var(--muted-color);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    
+    .equation-text {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 16px;
+      color: var(--accent-color);
+      overflow-x: auto;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+    
+    .equation-text.katex-rendered {
+      font-family: inherit;
+    }
+    
+    .open-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted-color);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    
+    .open-link:hover {
+      color: var(--accent-color);
+      border-color: var(--accent-color);
+      background: rgba(100, 255, 218, 0.05);
+    }
+    
+    .open-link svg {
+      width: 14px;
+      height: 14px;
+    }
+    
+    .calculator-container {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
+    
+    #calculator {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    
+    .loading-state {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background: var(--bg-color);
+      z-index: 10;
+      transition: opacity 0.3s ease;
+    }
+    
+    .loading-state.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(100, 255, 218, 0.2);
+      border-top-color: var(--accent-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+      color: var(--muted-color);
+      font-size: 14px;
+    }
+    
+    .error-state {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: var(--bg-color);
+      padding: 40px 20px;
+      text-align: center;
+    }
+    
+    .error-state.hidden {
+      display: none;
+    }
+    
+    .error-icon {
+      width: 48px;
+      height: 48px;
+      color: var(--muted-color);
+      opacity: 0.5;
+    }
+    
+    .error-message {
+      color: var(--text-color);
+      font-size: 18px;
+      max-width: 400px;
+      line-height: 1.5;
+    }
+    
+    .error-hint {
+      color: var(--muted-color);
+      font-size: 14px;
+    }
+    
+    .error-link {
+      color: var(--accent-color);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .error-link:hover {
+      text-decoration: underline;
+    }
+    
+    @media (max-width: 600px) {
+      .header {
+        padding: 10px 12px;
+      }
+      
+      .equation-text {
+        font-size: 14px;
+      }
+      
+      .equation-label {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="equation-display">
+      <span class="equation-label">Graphing:</span>
+      <span class="equation-text" id="equation-display"></span>
+    </div>
+    <a href="#" id="open-desmos" class="open-link" target="_blank" rel="noopener">
+      Open in Desmos
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+        <polyline points="15 3 21 3 21 9"></polyline>
+        <line x1="10" y1="14" x2="21" y2="3"></line>
+      </svg>
+    </a>
+  </header>
+  
+  <main class="calculator-container">
+    <div class="loading-state" id="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading calculator...</div>
+    </div>
+    
+    <div class="error-state hidden" id="error">
+      <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M8 15s1.5-2 4-2 4 2 4 2"></path>
+        <line x1="9" y1="9" x2="9.01" y2="9"></line>
+        <line x1="15" y1="9" x2="15.01" y2="9"></line>
+      </svg>
+      <p class="error-message">We couldn't parse this equation.</p>
+      <p class="error-hint">
+        Try <a href="https://www.desmos.com/calculator" class="error-link" target="_blank" rel="noopener">opening Desmos directly</a> to graph your equation.
+      </p>
+    </div>
+    
+    <div id="calculator"></div>
+  </main>
+
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const equations = [];
+      
+      for (const [key, value] of params.entries()) {
+        if (key === 'eq' || key.match(/^eq\d+$/)) {
+          equations.push(decodeURIComponent(value));
+        }
+      }
+      
+      const allEquations = equations.length > 0 ? equations : [];
+      
+      const loadingEl = document.getElementById('loading');
+      const errorEl = document.getElementById('error');
+      const calculatorEl = document.getElementById('calculator');
+      const equationDisplay = document.getElementById('equation-display');
+      const openDesmosLink = document.getElementById('open-desmos');
+      
+      if (allEquations.length === 0) {
+        loadingEl.classList.add('hidden');
+        errorEl.classList.remove('hidden');
+        calculatorEl.style.display = 'none';
+        return;
+      }
+      
+      const displayText = allEquations.join(', ');
+      equationDisplay.textContent = displayText;
+      
+      const desmosUrl = 'https://www.desmos.com/calculator?' + allEquations.map(eq => 'y=' + encodeURIComponent(eq)).join('&');
+      openDesmosLink.href = desmosUrl;
+      
+      function tryRenderLatex(element, text) {
+        if (typeof katex !== 'undefined') {
+          try {
+            const latexText = text
+              .replace(/\^/g, '^{')
+              .replace(/(\d)\{/g, '$1^{')
+              .replace(/\{/g, '{')
+              .replace(/sqrt\(/g, '\\sqrt{')
+              .replace(/\)/g, '}')
+              .replace(/(\d)([a-zA-Z])/g, '$1 \\cdot $2');
+            
+            katex.render(text, element, {
+              throwOnError: false,
+              displayMode: false
+            });
+            element.classList.add('katex-rendered');
+          } catch (e) {
+            element.textContent = text;
+          }
+        }
+      }
+      
+      tryRenderLatex(equationDisplay, displayText);
+      
+      function initCalculator() {
+        if (typeof Desmos === 'undefined') {
+          setTimeout(initCalculator, 50);
+          return;
+        }
+        
+        try {
+          const calculator = Desmos.GraphingCalculator(calculatorEl, {
+            expressions: false,
+            settingsMenu: false,
+            zoomButtons: true,
+            lockViewport: false,
+            border: false
+          });
+          
+          allEquations.forEach((eq, index) => {
+            const expression = eq.includes('=') ? eq : 'y = ' + eq;
+            calculator.setExpression({
+              id: 'graph' + index,
+              latex: expression
+            });
+          });
+          
+          loadingEl.classList.add('hidden');
+        } catch (e) {
+          loadingEl.classList.add('hidden');
+          errorEl.classList.remove('hidden');
+          calculatorEl.style.display = 'none';
+          console.error('Desmos initialization error:', e);
+        }
+      }
+      
+      initCalculator();
+    })();
+  </script>
+</body>
+</html>
